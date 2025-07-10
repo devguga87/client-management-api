@@ -3,13 +3,13 @@ package com.devsuperior.client_management_api.services;
 import com.devsuperior.client_management_api.dto.ClientDTO;
 import com.devsuperior.client_management_api.entities.Client;
 import com.devsuperior.client_management_api.repositories.ClientRepository;
+import com.devsuperior.client_management_api.services.exceptions.ResourceNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 @Service
 public class ClientService {
@@ -18,9 +18,10 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public ClientDTO findById(Long id){
-        Optional<Client> result = repository.findById(id);
-        Client client = result.get();
-        return new ClientDTO(client);
+       Client client = repository.findById(id).orElseThrow(
+               () -> new ResourceNotFoundException("Recurso não encontrado")
+       );
+       return new ClientDTO(client);
     }
 
     @Transactional(readOnly = true)
@@ -39,14 +40,22 @@ public class ClientService {
 
     @Transactional
     public ClientDTO update(Long id, ClientDTO dto){
-        Client entity = repository.getReferenceById(id);
-        copyDtoToEntity(dto,entity);
-        entity = repository.save(entity);
-        return new ClientDTO(entity);
+        try{
+            Client entity = repository.getReferenceById(id);
+            copyDtoToEntity(dto,entity);
+            entity = repository.save(entity);
+            return new ClientDTO(entity);
+        }
+        catch(EntityNotFoundException e){
+            throw new ResourceNotFoundException("Recurso não encontrado");
+        }
     }
 
     @Transactional
     public void delete(Long id){
+        if(!repository.existsById(id)){
+            throw new ResourceNotFoundException("Recurso não encontrado");
+        }
         repository.deleteById(id);
     }
 
